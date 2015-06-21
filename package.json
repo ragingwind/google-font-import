@@ -21,7 +21,10 @@
   "keywords": [
     ""
   ],
-  "dependencies": {},
+  "dependencies": {
+    "lodash": "^3.9.3",
+    "parse5": "^1.4.2"
+  },
   "devDependencies": {
     "mocha": "*"
   }
