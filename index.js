@@ -1,7 +1,7 @@
 'use strict';
 
 var parser5 = require('parse5');
-var got = require('got-promise');
+var got = require('got');
 var _ = require('lodash');
 var next = require('next-promise');
 
@@ -45,26 +45,39 @@ function parse() {
   var Transform = require('stream').Transform;
   var parser = new Transform({objectMode: true});
   parser._transform = function(data, encoding, done) {
-    var link = parseLink(data);
-    this.push(link);
+    parseLink(data).forEach(function (link) {
+      this.push(link);
+    }.bind(this));
     done();
   };
   return parser;
 }
 
+function fetch() {
+  var Transform = require('stream').Transform;
+  var stream = new Transform({objectMode: true});
+  stream._transform = function(data, encoding, done) {
+    got(data.value, function(err, data, res) {
+      stream.push(data);
+      done();
+    });
+  };
+  return stream;
+}
+
 function download() {
   var Transform = require('stream').Transform;
-  var parser = new Transform({objectMode: true});
-  parser._transform = function(data, encoding, done) {
+  var stream = new Transform({objectMode: true});
+  stream._transform = function(data, encoding, done) {
     console.log(data);
-    done();
   };
-  return parser;
+  return stream;
 }
 
 module.exports = {
   get: function(uri) {
     read(uri).pipe(parse())
+             .pipe(fetch())
              .pipe(download());
   }
 };
