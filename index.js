@@ -11,12 +11,10 @@ function read(uri) {
   } else if (_.startsWith(uri, 'http')) {
     return got(uri);
   } else {
-    var Stream = require('stream');
-    var stream = new Stream();
-    stream.pipe = function(dest) {
-      dest.write(uri)
-      return dest;
-    }
+    var Readable = require('stream').Readable;
+    var stream = new Readable();
+    stream.push(uri);
+    stream.push(null);
     return stream;
   }
 }
@@ -45,7 +43,8 @@ function parse() {
   var Transform = require('stream').Transform;
   var parser = new Transform({objectMode: true});
   parser._transform = function(data, encoding, done) {
-    parseLink(data).forEach(function (link) {
+    var str = data.toString('utf8');
+    parseLink(str).forEach(function (link) {
       this.push(link);
     }.bind(this));
     done();
@@ -57,7 +56,7 @@ function fetch() {
   var Transform = require('stream').Transform;
   var stream = new Transform({objectMode: true});
   stream._transform = function(data, encoding, done) {
-    got(data.value, function(err, data, res) {
+    got('http:'+ data.value, function(err, data, res) {
       stream.push(data);
       done();
     });
@@ -66,18 +65,32 @@ function fetch() {
 }
 
 function download() {
-  var Transform = require('stream').Transform;
-  var stream = new Transform({objectMode: true});
-  stream._transform = function(data, encoding, done) {
-    console.log(data);
+  var Writable = require('stream').Writable;
+  var stream = new Writable({objectMode: true});
+  stream._write = function(data, encoding, done) {
+    stream.end();
+    done();
   };
   return stream;
 }
 
+var promisePipe = require('promisepipe');
+
 module.exports = {
-  get: function(uri) {
-    read(uri).pipe(parse())
-             .pipe(fetch())
-             .pipe(download());
+  get: function(uri, cb) {
+    var p = promisePipe(
+      read(uri),
+      parse(),
+      fetch(),
+      download()
+    );
+
+    p.then(function(stream) {
+      console.log('done');
+      cb();
+    }, function(err) {
+      console.log('err', err)
+    });
+
   }
-};
+}
