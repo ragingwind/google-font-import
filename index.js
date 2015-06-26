@@ -3,7 +3,7 @@
 var parser5 = require('parse5');
 var got = require('got');
 var _ = require('lodash');
-var next = require('next-promise');
+var pp = require('promisepipe');
 
 function read(uri) {
   if (_.startsWith(uri, 'file://')) {
@@ -74,23 +74,14 @@ function download() {
   return stream;
 }
 
-var promisePipe = require('promisepipe');
 
 module.exports = {
-  get: function(uri, cb) {
-    var p = promisePipe(
+  get: function(uri) {
+    return pp(
       read(uri),
       parse(),
       fetch(),
       download()
     );
-
-    p.then(function(stream) {
-      console.log('done');
-      cb();
-    }, function(err) {
-      console.log('err', err)
-    });
-
   }
 }
