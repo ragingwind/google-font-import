@@ -1,9 +1,9 @@
 {
-  "name": "google-font-importer",
+  "name": "gf-got",
   "version": "0.0.0",
   "description": "Download google fonts and update href of link to local path",
   "license": "MIT",
-  "repository": "ragingwind/google-font-importer",
+  "repository": "ragingwind/gf-got",
   "author": {
     "name": "ragingwind",
     "email": "ragingwind@gmail.com",

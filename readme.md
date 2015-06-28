@@ -1,21 +1,24 @@
 # google-font-importer [![Build Status](https://travis-ci.org/ragingwind/google-font-importer.svg?branch=master)](https://travis-ci.org/ragingwind/google-font-importer)
 
-> Download google fonts and update href of link to local path
+> Download google fonts
 
 ## Install
 
 ```
-$ npm install --save google-font-importer
+$ npm install --save gf-got
 ```
 
 
 ## Usage
 
 ```js
-var googleFontImporter = require('google-font-importer');
+var gfGot = require('gf-got');
 
-googleFontImporter('unicorns');
-//=> unicorns & rainbows
+gfGot('http://google-font/robotics.css', funcion(fontStream) {
+  
+});
+
+gfGot('http://google-font/robotics.css').pipe(writeFontStream());
 ```
 
 
