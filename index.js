@@ -1,11 +1,17 @@
 'use strict';
 
-var parser5 = require('parse5');
-var got = require('got');
+var through2 = require('through2');
+var promise = require('promisepipe');
+var dom5 = require('dom5');
+var pred = dom5.predicates;
 var _ = require('lodash');
-var pp = require('promisepipe');
+var got = require('got');
 
-function read(uri) {
+function readHTML(uri) {
+  if (!uri) {
+    throw new Error('URI or html string is null');
+  }
+
   if (_.startsWith(uri, 'file://')) {
     return fs.createReadStream(uri);
   } else if (_.startsWith(uri, 'http')) {
@@ -19,69 +25,46 @@ function read(uri) {
   }
 }
 
-function parseLink(html) {
-  var link = [];
-  var parser = new parser5.SimpleApiParser({
-    startTag: function(name, attrs, selfClosing) {
-      if (name === 'link' && attrs) {
-        var href = attrs[_.findIndex(attrs, {name: 'href'})];
+function tackLink() {
+  return through2(function (data, enc, done) {
+    var stream = this;
+    var dom = dom5.parse(data.toString('utf8'));
+    var links = dom5.queryAll(dom, pred.hasTagName('link'));
 
-        if (href && href.value.indexOf('fonts.googleapis.com') !== -1) {
-          link.push(href);
+    links.forEach(function (link) {
+      link.attrs.forEach(function(attr) {
+        if (attr.name === 'href' && attr.value.indexOf('fonts.googleapis.com') !== -1) {
+          stream.push(attr.value);
         }
-      }
-    }
-  });
-
-  parser.parse(html);
-
-  return link;
-}
-
-
-function parse() {
-  var Transform = require('stream').Transform;
-  var parser = new Transform({objectMode: true});
-  parser._transform = function(data, encoding, done) {
-    var str = data.toString('utf8');
-    parseLink(str).forEach(function (link) {
-      this.push(link);
-    }.bind(this));
-    done();
-  };
-  return parser;
-}
-
-function fetch() {
-  var Transform = require('stream').Transform;
-  var stream = new Transform({objectMode: true});
-  stream._transform = function(data, encoding, done) {
-    got('http:'+ data.value, function(err, data, res) {
-      stream.push(data);
-      done();
+      });
     });
-  };
-  return stream;
-}
-
-function download() {
-  var Writable = require('stream').Writable;
-  var stream = new Writable({objectMode: true});
-  stream._write = function(data, encoding, done) {
-    stream.end();
     done();
-  };
-  return stream;
+  });
 }
 
-
-module.exports = {
-  get: function(uri) {
-    return pp(
-      read(uri),
-      parse(),
-      fetch(),
-      download()
-    );
-  }
+function gotFontManifest() {
+  return through2.obj(function (data, enc, done) {
+    console.log(data);
+    return got('http:' + data.value);
+    done();
+  });
 }
+
+function gotFonts() {
+  return through2.obj(function (data, enc, done) {
+    console.log(gotFonts, data);
+    done();
+    // return got(data.value);
+  });
+}
+
+function imports(uri) {
+  return promise(
+    readHTML(uri),
+    tackLink(),
+    got()
+    // gotFontManifest()
+  );
+}
+
+module.exports = imports;

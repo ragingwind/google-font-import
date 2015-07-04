@@ -23,13 +23,15 @@
   ],
   "dependencies": {
     "bluebird": "^2.9.30",
-    "got": "^3.2.0",
+    "dom5": "^1.1.0",
+    "got": "^3.3.0",
     "got-promise": "^4.1.0",
-    "lodash": "^3.9.3",
+    "lodash": "^3.10.0",
     "next-promise": "^1.0.1",
     "parse5": "^1.4.2",
     "promise-streams": "^0.2.5",
-    "promisepipe": "^1.0.1"
+    "promisepipe": "^1.0.1",
+    "through2": "^2.0.0"
   },
   "devDependencies": {
     "mocha": "*"
