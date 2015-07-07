@@ -34,10 +34,10 @@ function tackLink() {
     var fonts = [];
 
     _.each(links, function (url, index) {
-      got('http:' + url, function(err, css) {
+      got('http:' + url, function(err, content) {
         fonts.push({
           url: url,
-          css: css
+          content: content
         });
 
         if (index === links.length - 1) {
@@ -52,32 +52,30 @@ function tackLink() {
 function gotFonts() {
   return through2.obj(function (fonts, enc, done) {
     var fontManifest = [];
-    fonts.forEach(function(d) {
-      css.parse(d.css).stylesheet.rules.forEach(function(f) {
-        console.log(d.url)
-        if (f.type === 'font-face') {
-          var property = {};
-          _.each(f.declarations, function(decl) {
-            if (decl.property === 'src') {
-              var sourceRe = /([\w]*)\(([\w\d':_.\/]*)\)/g;
-              var source;
-
-              console.log(decl.value);
-              while ((source = sourceRe.exec(decl.value))) {
-                property[source[1]] = source[2];
-                console.log(source[1], source[2])
-              }
-              console.log('----------------')
-            } else {
-              property[decl.property] = decl.value;
-            }
-          });
-
-          console.log(property);
+    _.each(fonts, function(font) {
+      _.each(css.parse(font.content).stylesheet.rules, function(rule) {
+        if (rule.type !== 'font-face' || !rule.declarations) {
+          return;
         }
+        var property = {};
+
+        _.each(rule.declarations, function(decl) {
+          if (decl.property === 'src') {
+            var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
+            var source;
+
+            while ((source = re.exec(decl.value))) {
+              property[source[1]] = source[2].replace(/\'/g, '');
+            }
+          } else {
+            property[decl.property] = decl.value;
+          }
+        });
       });
+      fontManifest.push(property);
     });
 
+    this.push(fontManifest);
     done();
   });
 }
