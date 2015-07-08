@@ -1,12 +1,12 @@
 'use strict';
 
 var through2 = require('through2');
-var promise = require('promisepipe');
 var dom5 = require('dom5');
 var pred = dom5.predicates;
 var _ = require('lodash');
 var got = require('got');
 var css = require('css');
+var fs = require('fs');
 
 function readHTML(uri) {
   if (!uri) {
@@ -49,7 +49,7 @@ function tackLink() {
   });
 }
 
-function gotFonts() {
+function makeManifest() {
   return through2.obj(function (fonts, enc, done) {
     var fontManifest = [];
     _.each(fonts, function(font) {
@@ -71,8 +71,12 @@ function gotFonts() {
             property[decl.property] = decl.value;
           }
         });
+
+        fontManifest.push({
+          got: got(property.url),
+          font: property
+        });
       });
-      fontManifest.push(property);
     });
 
     this.push(fontManifest);
@@ -81,11 +85,8 @@ function gotFonts() {
 }
 
 function imports(uri) {
-  return promise(
-    readHTML(uri),
-    tackLink(),
-    gotFonts()
-  );
+  return readHTML(uri).pipe(tackLink())
+    .pipe(makeManifest());
 }
 
 module.exports = imports;
