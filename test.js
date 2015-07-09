@@ -1,6 +1,17 @@
 'use strict';
 var assert = require('assert');
 var imports = require('./');
+var through2 = require('through2');
+var mkdirp = require('mkdirp');
+
+function writeFonts(cb) {
+  return through2.obj(function (fonts, enc, done) {
+    console.log(fonts);
+    cb(fonts);
+  });
+}
+
+mkdirp.sync('.tmp');
 
 it('Simple parse', function (done) {
   var html = [
@@ -12,8 +23,8 @@ it('Simple parse', function (done) {
     '</html>'
   ].join('\n');
 
-  imports(html).then(function() {
+  imports(html).pipe(writeFonts(function(fonts) {
     assert(true);
     done();
-  });
+  }));
 });
