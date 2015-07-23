@@ -3,7 +3,7 @@
 'use strict';
 
 var meow = require('meow');
-var gfGot = require('./');
+var imports = require('./');
 
 var cli = meow({
   help: [
@@ -15,11 +15,4 @@ var cli = meow({
   ].join('\n')
 });
 
-var manifest = gfGot.manifest(cli.input[0]);
-
-manifest.fonts.forEach(function (font) {
-  font.got().pipe(write());
-});
-
-// write target html containing updated html
-
+imports(cli);

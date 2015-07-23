@@ -1,5 +1,5 @@
 {
-  "name": "gf-got",
+  "name": "google-font-importer",
   "version": "0.0.0",
   "description": "Download google fonts and update href of link to local path",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha test -t 20000"
   },
   "files": [
     "index.js"
@@ -22,15 +22,12 @@
     ""
   ],
   "dependencies": {
-    "bluebird": "^2.9.30",
+    "css": "^2.2.1",
     "dom5": "^1.1.0",
     "got": "^3.3.0",
-    "got-promise": "^4.1.0",
     "lodash": "^3.10.0",
-    "next-promise": "^1.0.1",
     "parse5": "^1.4.2",
-    "promise-streams": "^0.2.5",
-    "promisepipe": "^1.0.1",
+    "pinkie-promise": "^1.0.0",
     "through2": "^2.0.0"
   },
   "devDependencies": {
