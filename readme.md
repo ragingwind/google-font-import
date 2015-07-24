@@ -12,13 +12,13 @@ $ npm install --save gf-got
 ## Usage
 
 ```js
-var gfGot = require('gf-got');
+var gfGot = require("gf-got");
 
-gfGot('http://google-font/robotics.css', funcion(fontStream) {
+gfGot("http://google-font/robotics.css", funcion(fontStream) {
   
 });
 
-gfGot('http://google-font/robotics.css').pipe(writeFontStream());
+gfGot("http://google-font/robotics.css").pipe(writeFontStream());
 ```
 
 

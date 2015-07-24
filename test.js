@@ -3,6 +3,7 @@
 var assert = require('assert');
 var mkdirp = require('mkdirp');
 var imports = require('./');
+var fontsdump = require('./fixture/fontdumps.json');
 
 var opts = {
   src: './fixture/roboto.html',

@@ -7,7 +7,7 @@ var pred = dom5.predicates;
 var _ = require('lodash');
 var got = require('got');
 var css = require('css');
-var Promise = require('pinkie-promise');
+var pinkiePromise = require('pinkie-promise');
 
 var chromeHeader = {
   headers: {
@@ -15,27 +15,8 @@ var chromeHeader = {
   }
 };
 
-function gotall(urls) {
-  var gots = _.map(urls, function (url) {
-    return new Promise(function (resolve, reject) {
-      got(url, chromeHeader, function (err, data) {
-        if (err) {
-          return reject(err);
-        }
-        
-        resolve({
-          url: url,
-          data: data
-        });
-      });
-    });
-  });
-
-  return Promise.all(gots);
-}
-
 function readHtml(src) {
-  return new Promise(function (resolve) {
+  return new pinkiePromise(function (resolve) {
     if (!fs.statSync(src).isFile()) {
       throw new Error('HTML path is invalid');
     }
@@ -46,62 +27,75 @@ function readHtml(src) {
       }
 
       var dom = dom5.parse(html.toString('utf8'));
-      var urls = _.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1].value')
+      var cssLinks = _.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1].value')
                   .filter(function (url) {
                     return url.indexOf('fonts.googleapis.com') >= 0;
                   });
 
-      resolve(urls);
+      resolve(cssLinks);
     });
   });
 }
 
-function extractFonts(content) {
-  var fonts = [];
-  _.each(css.parse(content).stylesheet.rules, function(rule) {
-    if (rule.type !== 'font-face' || !rule.declarations) {
-      return;
-    }
-
-    var font = {};
-    _.each(rule.declarations, function(decl) {
-      if (decl.property === 'src') {
-        var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
-        var source;
-        while ((source = re.exec(decl.value))) {
-          font[source[1]] = source[2].replace(/\'/g, '');
+function downloadCss(cssLinks) {
+  function gotLink(link) {
+    return new pinkiePromise(function (resolve, reject) {
+      got(link, chromeHeader, function (err, data) {
+        if (!err) {
+          resolve({link: link, data: data});
+        } else {
+          reject(err);
         }
-      } else {
-        font[decl.property] = decl.value;
-      }
+      });
     });
-    fonts.push(font);
-  });
+  }
 
-  return fonts;
+  return pinkiePromise.all(_.map(cssLinks, gotLink));
 }
 
-function parse(csses) {
-  return new Promise(function (resolve) {
+function parseCss(cssLinks) {
+  return new pinkiePromise(function (resolve) {
     var fonts = [];
-    _.each(csses, function (css) {
-      fonts = fonts.concat(extractFonts(css.data));
+
+    _.each(cssLinks, function (link) {
+      _.each(css.parse(link.data).stylesheet.rules, function(rule) {
+        var font = {};
+        if (rule.type !== 'font-face' || !rule.declarations) {
+          return;
+        }
+
+        _.each(rule.declarations, function(decl) {
+          if (decl.property === 'src') {
+            var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
+            var source;
+            while ((source = re.exec(decl.value))) {
+              font[source[1]] = source[2].replace(/\'/g, '');
+            }
+          } else {
+            font[decl.property] = decl.value;
+          }
+        });
+
+        fonts.push(font);
+      });
     });
+
     resolve(fonts);
   });
 }
 
-function download(opts) {
+function downloadFont(opts) {
   return function (fonts) {
-    var gots = _.pluck(fonts, 'url').map(function(url) {
+    function gotFont(url) {
       var filename = path.join(opts.target, path.basename(url));
-      return new Promise(function (resolve) {
+      return new pinkiePromise(function (resolve) {
         got(url).pipe(fs.createWriteStream(filename)).on('close', function() {
-          resolve();
+          resolve(url);
         });
       });
-    });
-    return Promise.all(gots);
+    }
+
+    return pinkiePromise.all(_.pluck(fonts, 'url').map(gotFont));
   };
 }
 
@@ -112,11 +106,11 @@ function imports(opts) {
     throw new Error('Source path must be exist');
   }
 
-  return readHtml(opts.src).then(gotall)
-                           .then(parse)
-                           .then(download(opts))
-                           .then(function () {
-                             console.log('done');
+  return readHtml(opts.src).then(downloadCss)
+                           .then(parseCss)
+                           .then(downloadFont(opts))
+                           .then(function(url) {
+                             console.log('done', url);
                            });
 }
 
