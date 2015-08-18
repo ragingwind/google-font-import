@@ -1,9 +1,9 @@
 {
-  "name": "google-font-importer",
+  "name": "google-font-import",
   "version": "0.0.0",
-  "description": "Download google fonts and update href of link to local path",
+  "description": "Download google fonts and write html/css file with updated path",
   "license": "MIT",
-  "repository": "ragingwind/gf-got",
+  "repository": "https://github.com/ragingwind/google-font-import.git",
   "author": {
     "name": "ragingwind",
     "email": "ragingwind@gmail.com",
@@ -13,25 +13,32 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "test": "mocha test -t 20000"
+    "test": "rm -rf .tmp; mocha test -t 20000"
+  },
+  "bin": {
+    "gf-import": "cli.js"
   },
   "files": [
     "index.js"
   ],
   "keywords": [
-    ""
+    "google font",
+    "download",
+    "downloader",
+    "got"
   ],
   "dependencies": {
     "css": "^2.2.1",
     "dom5": "^1.1.0",
     "got": "^3.3.0",
     "lodash": "^3.10.0",
+    "meow": "^3.3.0",
+    "mkdirp": "^0.5.1",
     "parse5": "^1.4.2",
     "pinkie-promise": "^1.0.0",
     "through2": "^2.0.0"
   },
   "devDependencies": {
-    "mkdirp": "^0.5.1",
     "mocha": "*"
   }
 }

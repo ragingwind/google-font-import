@@ -1,4 +1,8 @@
 {
+  "styles": [
+    "css_family_Roboto_400_300_300italic_400italic_500_500italic_700_700italic",
+    "css_family_Roboto_Mono_400_700"
+  ],
   "fonts": [
     "-L14Jk06m6pUHB-5mXQQnYX0hVgzZQUfRDuZrPvH3D8.woff2",
     "0eC6fl06luXEYWpBSJvXCIX0hVgzZQUfRDuZrPvH3D8.woff2",

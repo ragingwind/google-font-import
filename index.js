@@ -7,7 +7,9 @@ var pred = dom5.predicates;
 var _ = require('lodash');
 var got = require('got');
 var css = require('css');
-var pinkiePromise = require('pinkie-promise');
+var PinkiePromise = require('pinkie-promise');
+var mkdirp = require('mkdirp');
+// var url = require('url');
 
 var chromeHeader = {
   headers: {
@@ -15,34 +17,46 @@ var chromeHeader = {
   }
 };
 
-function readHtml(src) {
-  return new pinkiePromise(function (resolve) {
+function escape(qs) {
+  return qs.replace(/\?|\=|,|:|\+/g, '_');
+}
+
+function processHTML(src, htmlpath, stylepath) {
+  return new PinkiePromise(function (resolve) {
     if (!fs.statSync(src).isFile()) {
       throw new Error('HTML path is invalid');
     }
 
-    fs.readFile(path.resolve(src), function (err, html) {
+    fs.readFile(path.resolve(src), function (err, content) {
       if (err) {
         throw err;
       }
 
-      var dom = dom5.parse(html.toString('utf8'));
-      var cssLinks = _.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1].value')
-                  .filter(function (url) {
-                    return url.indexOf('fonts.googleapis.com') >= 0;
-                  });
+      var dom = dom5.parse(content.toString('utf8'));
+      var urls = _.map(_.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1]'), function(href) {
+        var url = null;
+        if (href.value.indexOf('fonts.googleapis.com') >= 0) {
+          url = href.value;
+          // replace by updated style path
+          href.value = path.join(stylepath, escape(path.basename(href.value)));
+        }
+        return url;
+      });
 
-      resolve(cssLinks);
+      // write html file with new style path
+      fs.writeFileSync(path.resolve(htmlpath), dom5.serialize(dom));
+
+      resolve(urls);
     });
   });
 }
 
-function downloadCss(cssLinks) {
-  function gotLink(link) {
-    return new pinkiePromise(function (resolve, reject) {
-      got(link, chromeHeader, function (err, data) {
+function downloadCSS(urls) {
+  function gotLink(url) {
+    return new PinkiePromise(function (resolve, reject) {
+      got(url, chromeHeader, function (err, content) {
         if (!err) {
-          resolve({link: link, data: data});
+          resolve({url: url, content: content});
         } else {
           reject(err);
         }
@@ -50,68 +64,104 @@ function downloadCss(cssLinks) {
     });
   }
 
-  return pinkiePromise.all(_.map(cssLinks, gotLink));
+  return PinkiePromise.all(_.map(urls, gotLink));
 }
 
-function parseCss(cssLinks) {
-  return new pinkiePromise(function (resolve) {
-    var fonts = [];
+function processCSS(url, content, stylepath, fontpath) {
+  var style = css.parse(content);
+  var fonts = [];
 
-    _.each(cssLinks, function (link) {
-      _.each(css.parse(link.data).stylesheet.rules, function(rule) {
-        var font = {};
-        if (rule.type !== 'font-face' || !rule.declarations) {
-          return;
+  _.each(style.stylesheet.rules, function(rule) {
+    var font = {};
+
+    if (rule.type !== 'font-face' || !rule.declarations) {
+      return;
+    }
+
+    _.each(rule.declarations, function(decl) {
+      if (decl.property === 'src') {
+        var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
+        var source;
+        while ((source = re.exec(decl.value))) {
+          font[source[1]] = source[2].replace(/\'/g, '');
         }
 
-        _.each(rule.declarations, function(decl) {
-          if (decl.property === 'src') {
-            var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
-            var source;
-            while ((source = re.exec(decl.value))) {
-              font[source[1]] = source[2].replace(/\'/g, '');
-            }
-          } else {
-            font[decl.property] = decl.value;
-          }
-        });
-
-        fonts.push(font);
-      });
+        font.filepath = path.join(fontpath, path.basename(font.url));
+        decl.value = decl.value.replace(font.url, path.relative(stylepath, font.filepath));
+      } else {
+        font[decl.property] = decl.value;
+      }
     });
 
-    resolve(fonts);
+    fonts.push(font);
   });
+
+  fs.writeFileSync(path.join(stylepath, escape(path.basename(url))), css.stringify(style));
+
+  return fonts;
 }
 
-function downloadFont(opts) {
-  return function (fonts) {
-    function gotFont(url) {
-      var filename = path.join(opts.target, path.basename(url));
-      return new pinkiePromise(function (resolve) {
-        got(url).pipe(fs.createWriteStream(filename)).on('close', function() {
-          resolve(url);
+function downloadFonts(fontpath) {
+  return function(fonts) {
+    function gotFont(font) {
+      return new PinkiePromise(function (resolve) {
+        got(font.url).pipe(fs.createWriteStream(font.filepath)).on('close', function() {
+          resolve(font);
         });
       });
     }
 
-    return pinkiePromise.all(_.pluck(fonts, 'url').map(gotFont));
+    return PinkiePromise.all(_.map(fonts, gotFont));
   };
 }
 
-function imports(opts) {
+function preparePath(opts) {
+  mkdirp.sync(opts.htmlpath);
+
+  if (opts.stylepath) {
+    mkdirp.sync(opts.stylepath);
+  } else {
+    opts.stylepath = opts.htmlpath;
+  }
+
+  if (opts.fontpath) {
+    mkdirp.sync(opts.fontpath);
+  } else {
+    opts.fontpath = opts.htmlpath;
+  }
+}
+
+function imports(opts, done) {
   opts = opts || {};
 
   if (!opts.src) {
     throw new Error('Source path must be exist');
   }
+  preparePath(opts);
 
-  return readHtml(opts.src).then(downloadCss)
-                           .then(parseCss)
-                           .then(downloadFont(opts))
-                           .then(function(url) {
-                             console.log('done', url);
-                           });
+  return processHTML(opts.src, path.join(opts.htmlpath, path.basename(opts.src)), opts.stylepath)
+    .then(downloadCSS)
+    .then(function(res) {
+      var fonts = [];
+
+      _.forEach(res, function(r) {
+        fonts = fonts.concat(processCSS(r.url, r.content, opts.stylepath, opts.fontpath));
+      });
+
+      return fonts;
+    })
+    .then(downloadFonts(path.resolve(opts.fontpath)))
+    .then(function() {
+      if (done) {
+        done();
+        return;
+      }
+    }).catch(function(e) {
+      if (done) {
+        done(e);
+        return;
+      }
+    });
 }
 
 module.exports = imports;

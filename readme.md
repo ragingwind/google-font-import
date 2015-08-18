@@ -1,48 +1,71 @@
-# google-font-importer [![Build Status](https://travis-ci.org/ragingwind/google-font-importer.svg?branch=master)](https://travis-ci.org/ragingwind/google-font-importer)
+# google-font-import[![Build Status](https://travis-ci.org/ragingwind/google-font-importer.svg?branch=master)](https://travis-ci.org/ragingwind/google-font-importer)
 
-> Download google fonts
+> Download google fonts and write html/css file with updated path
 
 ## Install
 
 ```
-$ npm install --save gf-got
+$ npm install --save google-font-import
 ```
 
 
 ## Usage
 
-```js
-var gfGot = require("gf-got");
+### Console
 
-gfGot("http://google-font/robotics.css", funcion(fontStream) {
-  
-});
-
-gfGot("http://google-font/robotics.css").pipe(writeFontStream());
+```sh
+gf-import ./fixture/roboto.html --html=./.tmp --font=./.tmp/fonts --style=./.tmp
 ```
 
+#### Options
+
+- --html: html path to save the file having new path of style
+- --fonts<optional>: destination path to download fonts
+- --style<optional>: stylesheet path to save the file having new path of fonts
+
+### API
+
+```js
+var import = require("google-font-import");
+
+var opts = {
+  src: './fixture/roboto.html',
+  htmlpath: './.tmp',
+  fontpath: './.tmp/fonts',
+  stylepath: './.tmp'
+};
+
+imports(opts).then(function () {
+  console.log('done')
+});
+```
 
 ## API
 
-### googleFontImporter(input, [options])
-
-#### input
-
-*Required*  
-Type: `string`
-
-Lorem ipsum.
+### imports(options, [callback])
 
 #### options
 
-##### foo
+##### src
 
-Type: `boolean`  
-Default: `false`
+*Required*
 
-Lorem ipsum.
+The path of source html file having stylesheet of google fonts.
 
+##### htmlpath
+
+*Required*
+
+html path to save a new html file having new path of stylesheet.
+
+##### fontpath
+
+The path for destination to download fonts, If it is not given If it is not given it will be replaced by htmlpath.
+
+##### stylepath
+
+The path for stylesheet to save the file having new path of fonts. If it is not given If it is not given it will be replaced by htmlpath.
 
 ## License
 
-MIT © [ragingwind](http://ragingwind.me)
+MIT © [Jimmy Moon](http://ragingwind.me)
