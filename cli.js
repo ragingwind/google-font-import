@@ -20,8 +20,8 @@ var cli = meow({
   ].join('\n')
 });
 
-if (cli.input.length === 0) {
-  console.error('Target source path is invalid');
+if (cli.input.length === 0 || !cli.flags.html) {
+  console.error('Source or HTML path must be passed');
   process.exit(-1);
   return;
 }

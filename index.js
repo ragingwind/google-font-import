@@ -134,7 +134,7 @@ function preparePath(opts) {
 function imports(opts, done) {
   opts = opts || {};
 
-  if (!opts.src) {
+  if (!opts.src || !opts.htmlpath) {
     throw new Error('Source path must be exist');
   }
   preparePath(opts);
