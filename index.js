@@ -21,7 +21,7 @@ function escape(qs) {
   return qs.replace(/\?|\=|,|:|\+/g, '_');
 }
 
-function processHTML(src, htmlpath, stylepath) {
+function processHTML(src, predicates) {
   return new PinkiePromise(function (resolve) {
     if (!fs.statSync(src).isFile()) {
       throw new Error('HTML path is invalid');
@@ -33,20 +33,12 @@ function processHTML(src, htmlpath, stylepath) {
       }
 
       var dom = dom5.parse(content.toString('utf8'));
-      var urls = _.map(_.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1]'), function(href) {
-        var url = null;
-        if (href.value.indexOf('fonts.googleapis.com') >= 0) {
-          url = href.value;
-          // replace by updated style path
-          href.value = path.join(stylepath, escape(path.basename(href.value)));
-        }
-        return url;
+      var urls = _.map(_.pluck(dom5.queryAll(dom, pred.hasTagName('link')), 'attrs[1]'), predicates);
+
+      resolve({
+        content: dom5.serialize(dom),
+        urls: urls
       });
-
-      // write html file with new style path
-      fs.writeFileSync(path.resolve(htmlpath), dom5.serialize(dom));
-
-      resolve(urls);
     });
   });
 }
@@ -67,7 +59,7 @@ function downloadCSS(urls) {
   return PinkiePromise.all(_.map(urls, gotLink));
 }
 
-function processCSS(url, content, stylepath, fontpath) {
+function processCSS(content, predicates) {
   var style = css.parse(content);
   var fonts = [];
 
@@ -82,13 +74,15 @@ function processCSS(url, content, stylepath, fontpath) {
       if (decl.property === 'src') {
         var re = /([\w]*)\(([\w\d':_.\/ -]*)\)/g;
         var source;
+
+        // seperate values of src property
         while ((source = re.exec(decl.value))) {
           font[source[1]] = source[2].replace(/\'/g, '');
         }
 
-        font.filepath = path.join(fontpath, path.basename(font.url));
-        decl.value = decl.value.replace(font.url, path.relative(stylepath, font.filepath));
+        decl.value = predicates(decl.value, font.url);
       } else {
+        // keep its property
         font[decl.property] = decl.value;
       }
     });
@@ -96,16 +90,18 @@ function processCSS(url, content, stylepath, fontpath) {
     fonts.push(font);
   });
 
-  fs.writeFileSync(path.join(stylepath, escape(path.basename(url))), css.stringify(style));
-
-  return fonts;
+  return {
+    content: css.stringify(style),
+    fonts: fonts
+  };
 }
 
-function downloadFonts(fontpath) {
+function downloadFonts(predicates) {
   return function(fonts) {
     function gotFont(font) {
       return new PinkiePromise(function (resolve) {
-        got(font.url).pipe(fs.createWriteStream(font.filepath)).on('close', function() {
+        var fontpath = predicates(font.url);
+        got(font.url).pipe(fs.createWriteStream(fontpath)).on('close', function() {
           resolve(font);
         });
       });
@@ -115,42 +111,73 @@ function downloadFonts(fontpath) {
   };
 }
 
-function preparePath(opts) {
-  mkdirp.sync(opts.htmlpath);
-
-  if (opts.stylepath) {
-    mkdirp.sync(opts.stylepath);
-  } else {
-    opts.stylepath = opts.htmlpath;
-  }
-
-  if (opts.fontpath) {
-    mkdirp.sync(opts.fontpath);
-  } else {
-    opts.fontpath = opts.htmlpath;
-  }
-}
-
 function imports(opts, done) {
   opts = opts || {};
 
   if (!opts.src || !opts.htmlpath) {
     throw new Error('Source path must be exist');
   }
-  preparePath(opts);
 
-  return processHTML(opts.src, path.join(opts.htmlpath, path.basename(opts.src)), opts.stylepath)
-    .then(downloadCSS)
-    .then(function(res) {
-      var fonts = [];
+  function preparePath() {
+    mkdirp.sync(opts.htmlpath);
 
-      _.forEach(res, function(r) {
-        fonts = fonts.concat(processCSS(r.url, r.content, opts.stylepath, opts.fontpath));
+    if (opts.stylepath) {
+      mkdirp.sync(opts.stylepath);
+    } else {
+      opts.stylepath = opts.htmlpath;
+    }
+
+    if (opts.fontpath) {
+      mkdirp.sync(opts.fontpath);
+    } else {
+      opts.fontpath = opts.htmlpath;
+    }
+  }
+
+  function replaceStylePath(href) {
+    var url = null;
+    if (href.value.indexOf('fonts.googleapis.com') >= 0) {
+        url = href.value;
+        // replace by updated style path
+        href.value = path.join(opts.stylepath, escape(path.basename(href.value)));
+    }
+    return url;
+  }
+
+  function writeHTML(res) {
+    fs.writeFileSync(path.resolve(path.join(opts.htmlpath, path.basename(opts.src))), res.content);
+    return res.urls;
+  }
+
+  function extractFonts(res) {
+    var fonts = [];
+
+    _.forEach(res, function(r) {
+      var css = processCSS(r.content, function(oldUrl, newUrl) {
+        // replace the path of url to local path
+        return oldUrl.replace(newUrl, path.relative(opts.stylepath,
+            path.join(opts.fontpath, path.basename(newUrl))));
       });
 
-      return fonts;
-    })
-    .then(downloadFonts(path.resolve(opts.fontpath)))
+      fonts = fonts.concat(css.fonts);
+
+      fs.writeFileSync(path.join(opts.stylepath, escape(path.basename(r.url))), css.content);
+    });
+
+    return fonts;
+  }
+
+  function getFontFilePath(fontURL) {
+    return path.join(opts.fontpath, path.basename(fontURL));
+  }
+
+  preparePath();
+
+  return processHTML(opts.src, replaceStylePath)
+    .then(writeHTML)
+    .then(downloadCSS)
+    .then(extractFonts)
+    .then(downloadFonts(getFontFilePath))
     .then(function() {
       if (done) {
         done();
