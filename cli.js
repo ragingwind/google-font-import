@@ -11,12 +11,12 @@ var cli = meow({
     ' gf-import <html-path> --html=<html-output> --font=<font-output> --style=<style-output>',
     '',
     'Example',
-    ' gf-import ./fixture/roboto.html --html=./.tmp --font=./.tmp/fonts --style=./.tmp',
+    ' gf-import ./fixture/roboto.html --html=./.tmp --font=./.tmp/font --style=./.tmp',
     '',
     'Options',
     ' - --html: html path to save the file having new path of style',
-    ' - --fonts: destination path for downloaded fonts',
-    ' - --style: stylesheet path to save the file having new path of fonts'
+    ' - --font: destination path for a downloaded font',
+    ' - --style: stylesheet path to save the file having new path of the font'
   ].join('\n')
 });
 
