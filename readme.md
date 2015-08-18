@@ -1,4 +1,4 @@
-# google-font-import[![Build Status](https://travis-ci.org/ragingwind/google-font-importer.svg?branch=master)](https://travis-ci.org/ragingwind/google-font-importer)
+# google-font-import
 
 > Download google fonts and write html/css file with updated path
 
@@ -26,7 +26,7 @@ gf-import ./fixture/roboto.html --html=./.tmp --font=./.tmp/fonts --style=./.tmp
 ### API
 
 ```js
-var import = require("google-font-import");
+var imports = require("google-font-import");
 
 var opts = {
   src: './fixture/roboto.html',
