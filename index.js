@@ -9,7 +9,6 @@ var got = require('got');
 var css = require('css');
 var PinkiePromise = require('pinkie-promise');
 var mkdirp = require('mkdirp');
-// var url = require('url');
 
 var chromeHeader = {
   headers: {

@@ -60,11 +60,11 @@ html path to save a new html file having new path of stylesheet.
 
 ##### fontpath
 
-The path for destination to download fonts, If it is not given If it is not given it will be replaced by htmlpath.
+The path for destination to download fonts, If it is not given it will be replaced by htmlpath.
 
 ##### stylepath
 
-The path for stylesheet to save the file having new path of fonts. If it is not given If it is not given it will be replaced by htmlpath.
+The path for stylesheet to save the file having new path of fonts. If it is not given it will be replaced by htmlpath.
 
 ## License
 

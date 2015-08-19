@@ -35,8 +35,7 @@
     "meow": "^3.3.0",
     "mkdirp": "^0.5.1",
     "parse5": "^1.4.2",
-    "pinkie-promise": "^1.0.0",
-    "through2": "^2.0.0"
+    "pinkie-promise": "^1.0.0"
   },
   "devDependencies": {
     "mocha": "*"
