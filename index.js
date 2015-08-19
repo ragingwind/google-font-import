@@ -138,7 +138,7 @@ function imports(opts, done) {
     if (href.value.indexOf('fonts.googleapis.com') >= 0) {
         url = href.value;
         // replace by updated style path
-        href.value = path.join(opts.stylepath, escape(path.basename(href.value)));
+        href.value = path.join(path.relative(opts.htmlpath, opts.stylepath), escape(path.basename(href.value)));
     }
     return url;
   }
