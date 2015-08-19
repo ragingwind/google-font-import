@@ -19,7 +19,8 @@
     "gf-import": "cli.js"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "cli.js"
   ],
   "keywords": [
     "google font",
